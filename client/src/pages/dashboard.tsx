@@ -1,7 +1,7 @@
 import { useStats } from "@/hooks/use-resources";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Calendar, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, ArrowUpRight, Package } from "lucide-react";
 import { 
   Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid 
 } from "recharts";
