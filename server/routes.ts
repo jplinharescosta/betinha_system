@@ -3,10 +3,10 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import session from "express-session";
-import createMemoryStore from "memorystore";
-import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET || "betinha-secret-key";
+const JWT_EXPIRES_IN = "7d";
 
 // Helper to safely get a route param as string
 function param(req: Request, name: string): string {
@@ -14,71 +14,60 @@ function param(req: Request, name: string): string {
   return Array.isArray(val) ? val[0] : val;
 }
 
+// Extend Express Request to carry the authenticated user
+declare global {
+  namespace Express {
+    interface Request {
+      userId?: string;
+    }
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express,
 ): Promise<Server> {
-  const MemoryStore = createMemoryStore(session);
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET || "betinha-secret-key",
-      resave: false,
-      saveUninitialized: false,
-      cookie: { secure: process.env.NODE_ENV === "production" },
-      store: new MemoryStore({ checkPeriod: 86400000 }),
-    }),
-  );
-
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  passport.use(
-    new LocalStrategy(
-      { usernameField: "email" },
-      async (email, password, done) => {
-        try {
-          const user = await storage.getUserByEmail(email);
-          // For demo purposes, we will do a simple comparison. In production, use bcrypt!
-          if (!user || user.passwordHash !== password) {
-            return done(null, false, { message: "Invalid credentials" });
-          }
-          return done(null, user);
-        } catch (err) {
-          return done(err);
-        }
-      },
-    ),
-  );
-
-  passport.serializeUser((user: any, done) => done(null, user.id));
-  passport.deserializeUser(async (id: string, done) => {
-    try {
-      const user = await storage.getUser(id);
-      done(null, user);
-    } catch (err) {
-      done(err);
-    }
-  });
-
   const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-    if (req.isAuthenticated()) return next();
-    res.status(401).json({ message: "Unauthorized" });
+    const header = req.headers.authorization;
+    if (!header?.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const payload = jwt.verify(header.slice(7), JWT_SECRET) as {
+        userId: string;
+      };
+      req.userId = payload.userId;
+      next();
+    } catch {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
   };
 
   // Auth Routes
-  app.post(api.auth.login.path, passport.authenticate("local"), (req, res) => {
-    res.json(req.user);
+  app.post(api.auth.login.path, async (req, res) => {
+    try {
+      const { email, password } = api.auth.login.input.parse(req.body);
+      const user = await storage.getUserByEmail(email);
+      if (!user || user.passwordHash !== password) {
+        return res.status(401).json({ message: "Credenciais inválidas" });
+      }
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+        expiresIn: JWT_EXPIRES_IN,
+      });
+      const { passwordHash, ...safeUser } = user;
+      res.json({ token, user: safeUser });
+    } catch (err) {
+      if (err instanceof z.ZodError)
+        return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
   });
 
-  app.post(api.auth.logout.path, (req, res, next) => {
-    req.logout((err) => {
-      if (err) return next(err);
-      res.json({ success: true });
-    });
-  });
-
-  app.get(api.auth.me.path, requireAuth, (req, res) => {
-    res.json(req.user);
+  app.get(api.auth.me.path, requireAuth, async (req, res) => {
+    const user = await storage.getUser(req.userId!);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    const { passwordHash, ...safeUser } = user;
+    res.json(safeUser);
   });
 
   // Employees
