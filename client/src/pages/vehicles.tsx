@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { useEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee } from "@/hooks/use-resources";
+import { useVehicles, useCreateVehicle, useUpdateVehicle, useDeleteVehicle } from "@/hooks/use-resources";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, Search, Loader2 } from "lucide-react";
 import { 
   Dialog, DialogContent, DialogDescription, DialogFooter, 
-  DialogHeader, DialogTitle, DialogTrigger 
+  DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { 
   Table, TableBody, TableCell, TableHead, 
   TableHeader, TableRow 
@@ -20,38 +19,38 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertEmployeeSchema, type EmployeeResponse } from "@shared/schema";
+import { insertVehicleSchema, type VehicleResponse } from "@shared/schema";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { StatusBadge } from "@/components/status-badge";
 
-export default function Employees() {
-  const { data: employees, isLoading } = useEmployees();
+export default function Vehicles() {
+  const { data: vehicles, isLoading } = useVehicles();
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<EmployeeResponse | null>(null);
+  const [editingVehicle, setEditingVehicle] = useState<VehicleResponse | null>(null);
 
-  const filteredEmployees = employees?.filter((emp: EmployeeResponse) => 
-    emp.name.toLowerCase().includes(search.toLowerCase()) || 
-    emp.role.toLowerCase().includes(search.toLowerCase())
+  const filteredVehicles = vehicles?.filter((v: VehicleResponse) => 
+    v.name.toLowerCase().includes(search.toLowerCase()) || 
+    v.licensePlate.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <PageHeader 
-        title="Equipe" 
-        description="Gerencie seus funcionários e prestadores de serviço"
+        title="Frota" 
+        description="Gerencie os veículos da empresa"
       >
-        <Button onClick={() => setIsCreateOpen(true)} className="gap-2 shadow-lg shadow-primary/25">
+        <Button onClick={() => setIsCreateOpen(true)} className="gap-2 shadow-lg shadow-primary/25 bg-primary text-primary-foreground hover:bg-primary/90">
           <Plus className="h-4 w-4" />
-          Novo Funcionário
+          Novo Veículo
         </Button>
       </PageHeader>
 
       <div className="flex items-center gap-4 bg-card p-4 rounded-xl border border-border/50 shadow-sm">
         <Search className="h-4 w-4 text-muted-foreground" />
         <Input 
-          placeholder="Buscar por nome ou cargo..." 
+          placeholder="Buscar por nome ou placa..." 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="bg-transparent border-none shadow-none focus-visible:ring-0 h-auto p-0 placeholder:text-muted-foreground"
@@ -63,10 +62,10 @@ export default function Employees() {
           <TableHeader>
             <TableRow className="hover:bg-muted/30">
               <TableHead>Nome</TableHead>
-              <TableHead>Cargo</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Custo Base</TableHead>
-              <TableHead>Transp. Individual</TableHead>
+              <TableHead>Placa</TableHead>
+              <TableHead>KM/L</TableHead>
+              <TableHead>Preço Combustível</TableHead>
+              <TableHead>Manutenção/KM</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -78,28 +77,28 @@ export default function Employees() {
                   Carregando...
                 </TableCell>
               </TableRow>
-            ) : filteredEmployees?.length === 0 ? (
+            ) : filteredVehicles?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  Nenhum funcionário encontrado.
+                  Nenhum veículo encontrado.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredEmployees?.map((employee: EmployeeResponse) => (
-                <TableRow key={employee.id} className="hover:bg-muted/30">
-                  <TableCell className="font-medium">{employee.name}</TableCell>
-                  <TableCell>{employee.role}</TableCell>
-                  <TableCell>{employee.phone || "-"}</TableCell>
+              filteredVehicles?.map((vehicle: VehicleResponse) => (
+                <TableRow key={vehicle.id} className="hover:bg-muted/30">
+                  <TableCell className="font-medium">{vehicle.name}</TableCell>
+                  <TableCell>{vehicle.licensePlate}</TableCell>
+                  <TableCell>{vehicle.kmPerLiter}</TableCell>
                   <TableCell>
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(employee.basePayment))}
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(vehicle.avgFuelPrice))}
                   </TableCell>
                   <TableCell>
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(employee.individualTransportCost))}
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(vehicle.maintenanceCostPerKm))}
                   </TableCell>
                   <TableCell>
                     <StatusBadge 
-                      status={employee.active ? "Ativo" : "Inativo"} 
-                      variant={employee.active ? "success" : "default"} 
+                      status={vehicle.active ? "Ativo" : "Inativo"} 
+                      variant={vehicle.active ? "success" : "default"} 
                     />
                   </TableCell>
                   <TableCell className="text-right">
@@ -107,12 +106,12 @@ export default function Employees() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => setEditingEmployee(employee)}
+                        onClick={() => setEditingVehicle(vehicle)}
                         className="hover:bg-primary/10 hover:text-primary"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <DeleteEmployeeButton id={employee.id} name={employee.name} />
+                      <DeleteVehicleButton id={vehicle.id} name={vehicle.name} />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -122,43 +121,39 @@ export default function Employees() {
         </Table>
       </div>
 
-      <EmployeeDialog 
+      <VehicleDialog 
         open={isCreateOpen} 
         onOpenChange={setIsCreateOpen} 
       />
       
-      {editingEmployee && (
-        <EmployeeDialog 
-          open={!!editingEmployee} 
-          onOpenChange={(open) => !open && setEditingEmployee(null)} 
-          employee={editingEmployee}
+      {editingVehicle && (
+        <VehicleDialog 
+          open={!!editingVehicle} 
+          onOpenChange={(open) => !open && setEditingVehicle(null)} 
+          vehicle={editingVehicle}
         />
       )}
     </div>
   );
 }
 
-function DeleteEmployeeButton({ id, name }: { id: string, name: string }) {
+function DeleteVehicleButton({ id, name }: { id: string, name: string }) {
   const [open, setOpen] = useState(false);
-  const { mutate: deleteEmployee, isPending } = useDeleteEmployee();
+  const { mutate: deleteVehicle, isPending } = useDeleteVehicle();
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <Button 
         variant="ghost" 
         size="icon" 
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setOpen(true);
-        }}
+        onClick={() => setOpen(true)}
         className="hover:bg-destructive/10 hover:text-destructive"
       >
         <Trash2 className="h-4 w-4" />
       </Button>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Excluir Funcionário</AlertDialogTitle>
+          <AlertDialogTitle>Excluir Veículo</AlertDialogTitle>
           <AlertDialogDescription>
             Tem certeza que deseja excluir <strong>{name}</strong>? Esta ação não pode ser desfeita.
           </AlertDialogDescription>
@@ -166,7 +161,7 @@ function DeleteEmployeeButton({ id, name }: { id: string, name: string }) {
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction 
-            onClick={() => deleteEmployee(id)}
+            onClick={() => deleteVehicle(id)}
             disabled={isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
@@ -178,40 +173,41 @@ function DeleteEmployeeButton({ id, name }: { id: string, name: string }) {
   );
 }
 
-const formSchema = insertEmployeeSchema.extend({
-  basePayment: z.coerce.number().min(0, "Deve ser maior ou igual a 0"),
-  individualTransportCost: z.coerce.number().min(0, "Deve ser maior ou igual a 0"),
+const formSchema = insertVehicleSchema.extend({
+  kmPerLiter: z.coerce.number().min(0.1, "Deve ser maior que 0"),
+  avgFuelPrice: z.coerce.number().min(0, "Deve ser maior ou igual a 0"),
+  maintenanceCostPerKm: z.coerce.number().min(0, "Deve ser maior ou igual a 0"),
 });
 
-function EmployeeDialog({ 
+function VehicleDialog({ 
   open, 
   onOpenChange, 
-  employee 
+  vehicle 
 }: { 
   open: boolean; 
   onOpenChange: (open: boolean) => void; 
-  employee?: EmployeeResponse; 
+  vehicle?: VehicleResponse; 
 }) {
-  const isEditing = !!employee;
-  const { mutate: create, isPending: isCreating } = useCreateEmployee();
-  const { mutate: update, isPending: isUpdating } = useUpdateEmployee();
+  const isEditing = !!vehicle;
+  const { mutate: create, isPending: isCreating } = useCreateVehicle();
+  const { mutate: update, isPending: isUpdating } = useUpdateVehicle();
   const isPending = isCreating || isUpdating;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: employee?.name || "",
-      phone: employee?.phone || "",
-      role: employee?.role || "",
-      basePayment: employee ? Number(employee.basePayment) : 0,
-      individualTransportCost: employee ? Number(employee.individualTransportCost) : 0,
-      active: employee?.active ?? true,
+      name: vehicle?.name || "",
+      licensePlate: vehicle?.licensePlate || "",
+      kmPerLiter: vehicle ? Number(vehicle.kmPerLiter) : 10,
+      avgFuelPrice: vehicle ? Number(vehicle.avgFuelPrice) : 5,
+      maintenanceCostPerKm: vehicle ? Number(vehicle.maintenanceCostPerKm) : 0,
+      active: vehicle?.active ?? true,
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (isEditing && employee) {
-      update({ id: employee.id, ...values }, {
+    if (isEditing && vehicle) {
+      update({ id: vehicle.id, ...values }, {
         onSuccess: () => onOpenChange(false),
       });
     } else {
@@ -228,9 +224,9 @@ function EmployeeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar Funcionário" : "Novo Funcionário"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Editar Veículo" : "Novo Veículo"}</DialogTitle>
           <DialogDescription>
-            Preencha os dados do funcionário abaixo.
+            Preencha os dados do veículo abaixo.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -240,9 +236,22 @@ function EmployeeDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome Completo</FormLabel>
+                  <FormLabel>Nome do Veículo</FormLabel>
                   <FormControl>
-                    <Input placeholder="João da Silva" {...field} />
+                    <Input placeholder="Fiat Fiorino" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="licensePlate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Placa</FormLabel>
+                  <FormControl>
+                    <Input placeholder="ABC-1234" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -251,12 +260,12 @@ function EmployeeDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="role"
+                name="kmPerLiter"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cargo</FormLabel>
+                    <FormLabel>KM por Litro</FormLabel>
                     <FormControl>
-                      <Input placeholder="Animador" {...field} />
+                      <Input type="number" step="0.1" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -264,38 +273,10 @@ function EmployeeDialog({
               />
               <FormField
                 control={form.control}
-                name="phone"
+                name="avgFuelPrice"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone</FormLabel>
-                    <FormControl>
-                      <Input placeholder="(00) 00000-0000" {...field} value={field.value || ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="basePayment"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Custo Base (R$)</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="individualTransportCost"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Vale Transporte (R$)</FormLabel>
+                    <FormLabel>Preço Combustível (R$)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" {...field} />
                     </FormControl>
@@ -304,10 +285,23 @@ function EmployeeDialog({
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="maintenanceCostPerKm"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Custo Manutenção/KM (R$)</FormLabel>
+                  <FormControl>
+                    <Input type="number" step="0.01" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <DialogFooter className="pt-4">
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending} className="bg-primary text-primary-foreground hover:bg-primary/90">
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Salvar Alterações" : "Criar Funcionário"}
+                {isEditing ? "Salvar Alterações" : "Criar Veículo"}
               </Button>
             </DialogFooter>
           </form>

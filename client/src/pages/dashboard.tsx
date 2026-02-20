@@ -1,11 +1,12 @@
 import { useStats } from "@/hooks/use-resources";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Calendar, ArrowUpRight, Package } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, ArrowUpRight, Package, Users } from "lucide-react";
 import { 
   Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid 
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "wouter";
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useStats();
@@ -24,21 +25,21 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard 
           title="Receita Mensal" 
-          value={stats?.monthlyRevenue || "R$ 0,00"} 
+          value={stats?.monthlyRevenue ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(stats.monthlyRevenue)) : "R$ 0,00"} 
           icon={DollarSign}
           description="Total faturado este mês"
           trend="up"
         />
         <StatCard 
           title="Lucro Líquido" 
-          value={stats?.monthlyProfit || "R$ 0,00"} 
+          value={stats?.monthlyProfit ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(stats.monthlyProfit)) : "R$ 0,00"} 
           icon={TrendingUp}
           description="Após todos os custos"
           trend="up"
         />
         <StatCard 
           title="Margem Média" 
-          value={stats?.avgMargin || "0%"} 
+          value={stats?.avgMargin ? `${stats.avgMargin}%` : "0%"} 
           icon={ArrowUpRight}
           description="Rentabilidade por evento"
         />
@@ -62,8 +63,8 @@ export default function Dashboard() {
                 <AreaChart data={stats?.chartData || []}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                     </linearGradient>
                     <linearGradient id="colorCosts" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
@@ -93,7 +94,7 @@ export default function Dashboard() {
                     type="monotone" 
                     dataKey="revenue" 
                     name="Receita"
-                    stroke="#8b5cf6" 
+                    stroke="hsl(var(--primary))" 
                     fillOpacity={1} 
                     fill="url(#colorRevenue)" 
                     strokeWidth={2}
@@ -118,31 +119,50 @@ export default function Dashboard() {
             <CardTitle className="text-lg font-medium">Acesso Rápido</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 rounded-xl bg-muted/30 border border-border/50 flex items-center justify-between group cursor-pointer hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-blue-500/10 text-blue-500">
-                  <Calendar className="w-5 h-5" />
+            <Link href="/events/new">
+              <div className="p-4 rounded-xl bg-muted/30 border border-border/50 flex items-center justify-between group cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-blue-500/10 text-blue-500">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Novo Evento</p>
+                    <p className="text-xs text-muted-foreground">Cadastrar orçamento</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">Novo Evento</p>
-                  <p className="text-xs text-muted-foreground">Cadastrar orçamento</p>
-                </div>
+                <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-            </div>
+            </Link>
             
-            <div className="p-4 rounded-xl bg-muted/30 border border-border/50 flex items-center justify-between group cursor-pointer hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-purple-500/10 text-purple-500">
-                  <Package className="w-5 h-5" />
+            <Link href="/customers">
+              <div className="p-4 rounded-xl bg-muted/30 border border-border/50 flex items-center justify-between group cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-green-500/10 text-green-500">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Novo Cliente</p>
+                    <p className="text-xs text-muted-foreground">Cadastrar no sistema</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">Novo Produto</p>
-                  <p className="text-xs text-muted-foreground">Adicionar ao catálogo</p>
-                </div>
+                <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
               </div>
-              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-            </div>
+            </Link>
+
+            <Link href="/catalog">
+              <div className="p-4 rounded-xl bg-muted/30 border border-border/50 flex items-center justify-between group cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-purple-500/10 text-purple-500">
+                    <Package className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Novo Produto</p>
+                    <p className="text-xs text-muted-foreground">Adicionar ao catálogo</p>
+                  </div>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              </div>
+            </Link>
           </CardContent>
         </Card>
       </div>

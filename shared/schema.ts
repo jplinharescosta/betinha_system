@@ -59,6 +59,8 @@ export const events = pgTable("events", {
   id: uuid("id").defaultRandom().primaryKey(),
   clientName: text("client_name").notNull(),
   clientPhone: text("client_phone"),
+  clientEmail: text("client_email"),
+  clientAddress: text("client_address"),
   address: text("address").notNull(),
   eventDate: timestamp("event_date").notNull(),
   distanceKm: numeric("distance_km", { precision: 10, scale: 2 }).notNull(),

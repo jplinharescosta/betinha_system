@@ -1,11 +1,6 @@
 import { 
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, 
-  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarProvider, SidebarTrigger, SidebarHeader, SidebarFooter
-} from "@/components/ui/sidebar";
-import { 
   LayoutDashboard, Calendar, Package, Users, Truck, 
-  LogOut, Settings, Menu
+  LogOut, Settings, Menu, Calendar as CalendarIcon
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useLogout, useUser } from "@/hooks/use-auth";
@@ -15,6 +10,8 @@ import { Button } from "@/components/ui/button";
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Eventos", url: "/events", icon: Calendar },
+  { title: "Calendário", url: "/calendar", icon: CalendarIcon },
+  { title: "Clientes", url: "/customers", icon: Users },
   { title: "Catálogo", url: "/catalog", icon: Package },
   { title: "Equipe", url: "/employees", icon: Users },
   { title: "Frota", url: "/vehicles", icon: Truck },

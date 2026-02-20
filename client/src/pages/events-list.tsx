@@ -49,6 +49,25 @@ export default function EventsList() {
 function EventCard({ event }: { event: EventResponse }) {
   const date = new Date(event.eventDate);
   
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'CONFIRMED': return 'Confirmado';
+      case 'PENDING': return 'Pendente';
+      case 'DONE': return 'Concluído';
+      case 'CANCELED': return 'Cancelado';
+      default: return status;
+    }
+  };
+
+  const getFinancialStatusLabel = (status: string) => {
+    switch (status) {
+      case 'PAID': return 'Pago';
+      case 'PARTIAL': return 'Parcial';
+      case 'UNPAID': return 'Pendente';
+      default: return status;
+    }
+  };
+
   const statusVariant = {
     PENDING: "warning",
     CONFIRMED: "success",
@@ -67,7 +86,7 @@ function EventCard({ event }: { event: EventResponse }) {
       <Card className="group hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 cursor-pointer h-full flex flex-col">
         <CardHeader className="pb-3">
           <div className="flex justify-between items-start gap-2">
-            <StatusBadge status={event.status} variant={statusVariant} />
+            <StatusBadge status={getStatusLabel(event.status)} variant={statusVariant} />
             <span className="text-xs font-mono text-muted-foreground">
               {format(date, "dd/MM/yyyy", { locale: ptBR })}
             </span>
@@ -97,7 +116,7 @@ function EventCard({ event }: { event: EventResponse }) {
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(event.totalRevenue))}
             </span>
           </div>
-          <StatusBadge status={event.financialStatus} variant={financialVariant} className="text-[10px] px-2" />
+          <StatusBadge status={getFinancialStatusLabel(event.financialStatus)} variant={financialVariant} className="text-[10px] px-2" />
         </CardFooter>
       </Card>
     </Link>

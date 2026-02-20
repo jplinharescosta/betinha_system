@@ -11,6 +11,8 @@ import { Loader2 } from "lucide-react";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Employees from "@/pages/employees";
+import Vehicles from "@/pages/vehicles";
+import CalendarPage from "@/pages/calendar";
 import EventsList from "@/pages/events-list";
 import EventDetails from "@/pages/event-details";
 import NotFound from "@/pages/not-found";
@@ -55,13 +57,19 @@ function Router() {
       <Route path="/events/:id">
         <ProtectedRoute component={EventDetails} />
       </Route>
+      <Route path="/calendar">
+        <ProtectedRoute component={CalendarPage} />
+      </Route>
       
-      {/* Placeholder for other routes if needed later */}
       <Route path="/vehicles">
-        <ProtectedRoute component={() => <div className="p-8">Módulo Frota (Em breve)</div>} />
+        <ProtectedRoute component={Vehicles} />
       </Route>
       <Route path="/catalog">
         <ProtectedRoute component={() => <div className="p-8">Módulo Catálogo (Em breve)</div>} />
+      </Route>
+
+      <Route path="/customers">
+        <ProtectedRoute component={() => <div className="p-8">Módulo Clientes (Em breve)</div>} />
       </Route>
 
       <Route component={NotFound} />
