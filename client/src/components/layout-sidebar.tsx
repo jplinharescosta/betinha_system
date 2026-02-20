@@ -1,4 +1,9 @@
 import { 
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, 
+  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarProvider, SidebarTrigger, SidebarHeader, SidebarFooter
+} from "@/components/ui/sidebar";
+import { 
   LayoutDashboard, Calendar, Package, Users, Truck, 
   LogOut, Settings, Menu, Calendar as CalendarIcon
 } from "lucide-react";

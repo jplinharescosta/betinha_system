@@ -26,8 +26,10 @@ const formSchema = insertEventSchema.extend({
   distanceKm: z.coerce.number().min(0),
   guestAdults: z.coerce.number().min(0),
   guestKids: z.coerce.number().min(0),
-  eventDate: z.coerce.date(), // Handles string -> date conversion
-  extraExpenses: z.string().optional(), // Handle as string for input, convert if needed
+  eventDate: z.coerce.date(),
+  extraExpenses: z.string().optional(),
+  clientEmail: z.string().email().optional().or(z.literal("")),
+  clientAddress: z.string().optional(),
 });
 
 export default function EventDetails() {
@@ -70,6 +72,8 @@ export default function EventDetails() {
         guestKids: event.guestKids,
         vehicleId: event.vehicleId || undefined,
         extraExpenses: event.extraExpenses || "0",
+        clientEmail: event.clientEmail || "",
+        clientAddress: event.clientAddress || "",
       });
     }
   }, [event, isNew, form]);
@@ -102,7 +106,7 @@ export default function EventDetails() {
         </Button>
         <PageHeader 
           title={isNew ? "Novo Evento" : `Evento: ${event?.clientName}`} 
-          description={isNew ? "Preencha os dados iniciais" : `Data: ${format(new Date(event?.eventDate || new Date()), "dd/MM/yyyy HH:mm")}`}
+          description={isNew ? "Preencha os dados iniciais" : `Data: ${format(new Date(event?.eventDate || new Date()), "dd/MM/yyyy HH:mm", { locale: ptBR })}`}
           className="mb-0"
         />
       </div>
@@ -142,12 +146,37 @@ export default function EventDetails() {
                     />
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="clientEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>E-mail do Cliente</FormLabel>
+                          <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="clientAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Endereço do Cliente</FormLabel>
+                          <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Endereço</FormLabel>
+                        <FormLabel>Local do Evento</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -190,7 +219,7 @@ export default function EventDetails() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Status</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecione" />
@@ -243,7 +272,7 @@ export default function EventDetails() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tipo de Transporte</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecione" />
@@ -307,15 +336,15 @@ export default function EventDetails() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Situação Financeira</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecione" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="UNPAID">Não Pago</SelectItem>
-                              <SelectItem value="PARTIAL">Parcialmente Pago</SelectItem>
+                              <SelectItem value="UNPAID">Pendente</SelectItem>
+                              <SelectItem value="PARTIAL">Parcial</SelectItem>
                               <SelectItem value="PAID">Pago</SelectItem>
                             </SelectContent>
                           </Select>

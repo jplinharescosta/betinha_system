@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard";
 import Employees from "@/pages/employees";
 import Vehicles from "@/pages/vehicles";
 import CalendarPage from "@/pages/calendar";
+import Customers from "@/pages/customers";
 import EventsList from "@/pages/events-list";
 import EventDetails from "@/pages/event-details";
 import NotFound from "@/pages/not-found";
@@ -69,7 +70,7 @@ function Router() {
       </Route>
 
       <Route path="/customers">
-        <ProtectedRoute component={() => <div className="p-8">Módulo Clientes (Em breve)</div>} />
+        <ProtectedRoute component={Customers} />
       </Route>
 
       <Route component={NotFound} />
