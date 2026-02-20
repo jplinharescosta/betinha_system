@@ -3,7 +3,7 @@ services:
     name: betinha
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build && npm run db:push && npx tsx script/seed.ts
+    buildCommand: npm install --include=dev && npm run build && npm run db:push && npx tsx script/seed.ts
     startCommand: npm run start
     envVars:
       - key: NODE_ENV
