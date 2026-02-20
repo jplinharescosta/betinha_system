@@ -1,16 +1,286 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { api } from "@shared/routes";
+import { z } from "zod";
+import session from "express-session";
+import createMemoryStore from "memorystore";
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
 
-  // use storage to perform CRUD operations on the storage interface
-  // e.g. storage.insertUser(user) or storage.getUserByUsername(username)
+  const MemoryStore = createMemoryStore(session);
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'betinha-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: process.env.NODE_ENV === "production" },
+    store: new MemoryStore({ checkPeriod: 86400000 })
+  }));
+
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  passport.use(new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
+    try {
+      const user = await storage.getUserByEmail(email);
+      // For demo purposes, we will do a simple comparison. In production, use bcrypt!
+      if (!user || user.passwordHash !== password) {
+        return done(null, false, { message: "Invalid credentials" });
+      }
+      return done(null, user);
+    } catch (err) {
+      return done(err);
+    }
+  }));
+
+  passport.serializeUser((user: any, done) => done(null, user.id));
+  passport.deserializeUser(async (id: string, done) => {
+    try {
+      const user = await storage.getUser(id);
+      done(null, user);
+    } catch (err) {
+      done(err);
+    }
+  });
+
+  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+    if (req.isAuthenticated()) return next();
+    res.status(401).json({ message: "Unauthorized" });
+  };
+
+  // Auth Routes
+  app.post(api.auth.login.path, passport.authenticate("local"), (req, res) => {
+    res.json(req.user);
+  });
+
+  app.post(api.auth.logout.path, (req, res, next) => {
+    req.logout((err) => {
+      if (err) return next(err);
+      res.json({ success: true });
+    });
+  });
+
+  app.get(api.auth.me.path, requireAuth, (req, res) => {
+    res.json(req.user);
+  });
+
+  // Employees
+  app.get(api.employees.list.path, requireAuth, async (req, res) => {
+    const list = await storage.getEmployees();
+    res.json(list);
+  });
+
+  app.post(api.employees.create.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.employees.create.input.parse(req.body);
+      const created = await storage.createEmployee(input);
+      res.status(201).json(created);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message, field: err.errors[0].path.join('.') });
+      }
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  app.put(api.employees.update.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.employees.update.input.parse(req.body);
+      const updated = await storage.updateEmployee(req.params.id, input);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  app.delete(api.employees.delete.path, requireAuth, async (req, res) => {
+    await storage.deleteEmployee(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Vehicles
+  app.get(api.vehicles.list.path, requireAuth, async (req, res) => {
+    const list = await storage.getVehicles();
+    res.json(list);
+  });
+
+  app.post(api.vehicles.create.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.vehicles.create.input.parse(req.body);
+      const created = await storage.createVehicle(input);
+      res.status(201).json(created);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  app.put(api.vehicles.update.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.vehicles.update.input.parse(req.body);
+      const updated = await storage.updateVehicle(req.params.id, input);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  app.delete(api.vehicles.delete.path, requireAuth, async (req, res) => {
+    await storage.deleteVehicle(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Categories
+  app.get(api.categories.list.path, requireAuth, async (req, res) => {
+    const list = await storage.getCategories();
+    res.json(list);
+  });
+
+  app.post(api.categories.create.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.categories.create.input.parse(req.body);
+      const created = await storage.createCategory(input);
+      res.status(201).json(created);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  // Catalog
+  app.get(api.catalogItems.list.path, requireAuth, async (req, res) => {
+    const list = await storage.getCatalogItems();
+    res.json(list);
+  });
+
+  app.post(api.catalogItems.create.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.catalogItems.create.input.parse(req.body);
+      const created = await storage.createCatalogItem(input);
+      res.status(201).json(created);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  app.put(api.catalogItems.update.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.catalogItems.update.input.parse(req.body);
+      const updated = await storage.updateCatalogItem(req.params.id, input);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  app.delete(api.catalogItems.delete.path, requireAuth, async (req, res) => {
+    await storage.deleteCatalogItem(req.params.id);
+    res.json({ success: true });
+  });
+
+  // Events
+  app.get(api.events.list.path, requireAuth, async (req, res) => {
+    const filters = req.query.status ? { status: String(req.query.status) } : undefined;
+    const list = await storage.getEvents(filters);
+    res.json(list);
+  });
+
+  app.get(api.events.get.path, requireAuth, async (req, res) => {
+    const event = await storage.getEvent(req.params.id);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+    res.json(event);
+  });
+
+  app.post(api.events.create.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.events.create.input.parse(req.body);
+      const created = await storage.createEvent(input);
+      res.status(201).json(created);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  app.put(api.events.update.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.events.update.input.parse(req.body);
+      const updated = await storage.updateEvent(req.params.id, input);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  // Event relations (Items and Team)
+  app.post(api.events.addItem.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.events.addItem.input.parse(req.body);
+      await storage.addEventItem(req.params.id, input);
+      res.status(201).json({ success: true } as any);
+    } catch (err) {
+      res.status(400).json({ message: "Error adding item" });
+    }
+  });
+
+  app.delete(api.events.removeItem.path, requireAuth, async (req, res) => {
+    await storage.removeEventItem(req.params.id, req.params.itemId);
+    res.json({ success: true });
+  });
+
+  app.post(api.events.addTeamMember.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.events.addTeamMember.input.parse(req.body);
+      await storage.addEventTeamMember(req.params.id, input);
+      res.status(201).json({ success: true } as any);
+    } catch (err) {
+      res.status(400).json({ message: "Error adding team member" });
+    }
+  });
+
+  app.delete(api.events.removeTeamMember.path, requireAuth, async (req, res) => {
+    await storage.removeEventTeamMember(req.params.id, req.params.teamId);
+    res.json({ success: true });
+  });
+
+  app.get(api.events.stats.path, requireAuth, async (req, res) => {
+    const events = await storage.getEvents();
+    const pendingEvents = events.filter(e => e.status === 'PENDING').length;
+    
+    // Simplistic stats calculation
+    let monthlyRevenue = 0;
+    let monthlyProfit = 0;
+    
+    events.forEach(e => {
+      monthlyRevenue += parseFloat(e.totalRevenue as string);
+      monthlyProfit += parseFloat(e.netProfit as string);
+    });
+
+    res.json({
+      monthlyRevenue: monthlyRevenue.toFixed(2),
+      monthlyProfit: monthlyProfit.toFixed(2),
+      avgMargin: monthlyRevenue > 0 ? ((monthlyProfit / monthlyRevenue) * 100).toFixed(2) : "0.00",
+      pendingEvents,
+      chartData: [
+        { month: 'Jan', revenue: 4000, costs: 2400 },
+        { month: 'Feb', revenue: 3000, costs: 1398 },
+        { month: 'Mar', revenue: 2000, costs: 9800 },
+        { month: 'Apr', revenue: monthlyRevenue, costs: monthlyRevenue - monthlyProfit }
+      ]
+    });
+  });
 
   return httpServer;
 }
