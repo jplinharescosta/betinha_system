@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type LoginRequest, type UserResponse } from "@shared/routes";
+import { api } from "@shared/routes";
+import { type LoginRequest, type UserResponse } from "@shared/schema";
 import { useLocation } from "wouter";
 
 export function useUser() {
@@ -9,7 +10,7 @@ export function useUser() {
       const res = await fetch(api.auth.me.path);
       if (res.status === 401) return null;
       if (!res.ok) throw new Error("Failed to fetch user");
-      return await res.json() as UserResponse;
+      return (await res.json()) as UserResponse;
     },
     retry: false,
   });
@@ -26,12 +27,12 @@ export function useLogin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
       });
-      
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Login failed");
       }
-      return await res.json() as UserResponse;
+      return (await res.json()) as UserResponse;
     },
     onSuccess: (user) => {
       queryClient.setQueryData([api.auth.me.path], user);

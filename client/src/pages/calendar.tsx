@@ -9,6 +9,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
+import type { EventResponse } from "@shared/schema";
 
 export default function Calendar() {
   const [currentYear, setCurrentYear] = useState(new Date());
@@ -20,7 +21,7 @@ export default function Calendar() {
   });
 
   const getEventsForDay = (day: Date) => {
-    return events?.filter(event => isSameDay(new Date(event.eventDate), day)) || [];
+    return events?.filter((event: EventResponse) => isSameDay(new Date(event.eventDate), day)) || [];
   };
 
   const getStatusColor = (status: string) => {
@@ -90,7 +91,7 @@ export default function Calendar() {
                         </span>
                         {dayEvents.length > 0 && (
                           <div className="flex gap-0.5 mt-0.5">
-                            {dayEvents.slice(0, 3).map((event, idx) => (
+                            {dayEvents.slice(0, 3).map((event: EventResponse, idx: number) => (
                               <div 
                                 key={event.id} 
                                 className={cn("w-1 h-1 rounded-full", getStatusColor(event.status))}
@@ -101,7 +102,7 @@ export default function Calendar() {
                         {dayEvents.length > 0 && (
                           <div className="absolute inset-0 opacity-0 hover:opacity-100 bg-background/95 flex items-center justify-center p-1 z-20 rounded-md border border-border shadow-lg transition-opacity overflow-hidden">
                             <div className="flex flex-col gap-1 w-full">
-                              {dayEvents.map(event => (
+                              {dayEvents.map((event: EventResponse) => (
                                 <Link key={event.id} href={`/events/${event.id}`} className="text-[8px] truncate hover:text-primary transition-colors">
                                   • {event.clientName}
                                 </Link>

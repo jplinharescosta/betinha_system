@@ -206,12 +206,18 @@ function VehicleDialog({
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    const payload = {
+      ...values,
+      kmPerLiter: String(values.kmPerLiter),
+      avgFuelPrice: String(values.avgFuelPrice),
+      maintenanceCostPerKm: String(values.maintenanceCostPerKm),
+    };
     if (isEditing && vehicle) {
-      update({ id: vehicle.id, ...values }, {
+      update({ id: vehicle.id, ...payload }, {
         onSuccess: () => onOpenChange(false),
       });
     } else {
-      create(values, {
+      create(payload, {
         onSuccess: () => {
           form.reset();
           onOpenChange(false);

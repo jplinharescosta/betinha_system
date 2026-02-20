@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: betinha
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build && npm run db:push && npx tsx script/seed.ts
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+    disk:
+      name: betinha-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

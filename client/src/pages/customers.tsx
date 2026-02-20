@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { EventResponse } from "@shared/schema";
 
 export default function Customers() {
   const { data: events } = useEvents();
@@ -18,7 +19,7 @@ export default function Customers() {
 
   // Group events by client
   const clientsMap = new Map();
-  events?.forEach(event => {
+  events?.forEach((event: EventResponse) => {
     if (!clientsMap.has(event.clientName)) {
       clientsMap.set(event.clientName, {
         name: event.clientName,

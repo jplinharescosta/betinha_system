@@ -210,12 +210,17 @@ function EmployeeDialog({
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    const payload = {
+      ...values,
+      basePayment: String(values.basePayment),
+      individualTransportCost: String(values.individualTransportCost),
+    };
     if (isEditing && employee) {
-      update({ id: employee.id, ...values }, {
+      update({ id: employee.id, ...payload }, {
         onSuccess: () => onOpenChange(false),
       });
     } else {
-      create(values, {
+      create(payload, {
         onSuccess: () => {
           form.reset();
           onOpenChange(false);

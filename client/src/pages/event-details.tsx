@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, Save, ArrowLeft, Plus, Trash2, DollarSign } from "lucide-react";
 import { insertEventSchema } from "@shared/schema";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 const formSchema = insertEventSchema.extend({
@@ -81,12 +82,18 @@ export default function EventDetails() {
   const transportType = form.watch("transportType");
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    const payload = {
+      ...values,
+      distanceKm: String(values.distanceKm),
+      guestAdults: values.guestAdults,
+      guestKids: values.guestKids,
+    };
     if (isNew) {
-      create(values, {
+      create(payload, {
         onSuccess: (newEvent) => setLocation(`/events/${newEvent.id}`),
       });
     } else if (id) {
-      update({ id, ...values }, {
+      update({ id, ...payload }, {
         onSuccess: () => {
           // Toast success could go here
         }
