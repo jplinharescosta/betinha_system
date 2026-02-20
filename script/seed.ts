@@ -15,20 +15,18 @@ async function main() {
     where: eq(users.email, "admin@betinha.com"),
   });
   if (!existingAdmin) {
-    db.insert(users)
-      .values({
-        email: "admin@betinha.com",
-        passwordHash: "admin123", // In a real app, this should be hashed
-        name: "Admin Betinha",
-      })
-      .run();
+    await db.insert(users).values({
+      email: "admin@betinha.com",
+      passwordHash: "admin123", // In a real app, this should be hashed
+      name: "Admin Betinha",
+    });
     console.log("Admin user created.");
   }
 
   // Create initial data
   const existingVehicles = await db.query.vehicles.findMany();
   if (existingVehicles.length === 0) {
-    const vehicle = db
+    const [vehicle] = await db
       .insert(vehicles)
       .values({
         name: "Van Sprinter",
@@ -37,10 +35,9 @@ async function main() {
         avgFuelPrice: "5.90",
         maintenanceCostPerKm: "0.50",
       })
-      .returning()
-      .get();
+      .returning();
 
-    const employee = db
+    const [employee] = await db
       .insert(employees)
       .values({
         name: "João Motorista",
@@ -48,18 +45,16 @@ async function main() {
         basePayment: "150.00",
         individualTransportCost: "30.00",
       })
-      .returning()
-      .get();
+      .returning();
 
-    const category = db
+    const [category] = await db
       .insert(categories)
       .values({
         name: "Animação",
       })
-      .returning()
-      .get();
+      .returning();
 
-    const catalogItem = db
+    const [catalogItem] = await db
       .insert(catalogItems)
       .values({
         categoryId: category.id,
@@ -69,10 +64,9 @@ async function main() {
         internalCost: "100.00",
         stockQuantity: 1,
       })
-      .returning()
-      .get();
+      .returning();
 
-    const event = db
+    const [event] = await db
       .insert(events)
       .values({
         clientName: "Maria Silva",
@@ -88,8 +82,7 @@ async function main() {
         financialStatus: "PARTIAL",
         notes: "Festa de aniversário de 5 anos",
       })
-      .returning()
-      .get();
+      .returning();
 
     console.log("Seed data created.");
   }

@@ -5,10 +5,11 @@ import { rm, readFile } from "fs/promises";
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
 // Native modules that must ALWAYS remain external
-const nativeExternals = ["better-sqlite3"];
+const nativeExternals: string[] = [];
 
 // Deps to bundle into server output (reduces startup I/O)
 const allowlist = [
+  "@libsql/client",
   "date-fns",
   "drizzle-orm",
   "drizzle-zod",
