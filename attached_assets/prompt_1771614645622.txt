@@ -1,0 +1,136 @@
+Atue como um Arquiteto de Software Sênior e Desenvolvedor Fullstack Especialista.
+
+Sua tarefa é planejar e gerar o código para um sistema web administrativo completo para a empresa "Betinha Animações". O sistema deve ser robusto, escalável e seguir estritamente as regras de negócio e arquitetura abaixo.
+
+# VISÃO GERAL
+O sistema é um ERP para gestão de eventos, focando em controle financeiro rigoroso, gestão de frota, equipe e inventário. Não haverá interface pública, apenas painel administrativo.
+
+====================================================================
+1. STACK TECNOLÓGICA (OBRIGATÓRIA)
+====================================================================
+- Frontend: React + TypeScript + TailwindCSS (Vite).
+- Backend: Node.js + Express (ou NestJS) + TypeScript.
+- Banco de Dados: PostgreSQL.
+- ORM: Prisma (com Relations e Enums bem definidos).
+- Autenticação: JWT (HttpOnly cookies).
+- Arquitetura: MVC com Services Pattern (Regras de negócio isoladas no Backend).
+
+====================================================================
+2. REGRAS GERAIS DE ARQUITETURA
+====================================================================
+1. Single Source of Truth: Todos os cálculos financeiros (totais, margens, custos) devem ser feitos no BACKEND. O Frontend apenas exibe.
+2. Soft Deletes: NENHUM registro crítico (funcionários, veículos, eventos, histórico) deve ser deletado do banco. Use um campo `active` ou `deletedAt`.
+3. Validação: Use Zod ou Class-Validator para validar dados no backend.
+4. Transações: Operações que envolvem financeiro e estoque devem ser transacionais (Atomicidade).
+
+====================================================================
+3. MODELAGEM DE DADOS (SCHEMA PRISMA SUGERIDO)
+====================================================================
+
+### User (Administradores)
+- id (UUID)
+- email, password_hash, name, created_at
+
+### Employee (Equipe)
+- id (UUID)
+- name, phone, role (cargo)
+- base_payment (Decimal) -> Valor base do cachê
+- individual_transport_cost (Decimal) -> Custo se ele for de transporte público/próprio
+- active (Boolean default true)
+
+### Vehicle (Frota)
+- id (UUID)
+- name, license_plate (placa)
+- km_per_liter (Decimal) -> Consumo
+- avg_fuel_price (Decimal) -> Preço médio combustível
+- maintenance_cost_per_km (Decimal) -> Custo desgaste/pneu
+- active (Boolean default true)
+*Virtual Field (Calculado): cost_per_km = (avg_fuel_price / km_per_liter) + maintenance_cost_per_km*
+
+### Category (Catálogo)
+- id, name (Unique), active
+
+### CatalogItem (Produtos/Serviços)
+- id, category_id, name, description
+- type (ENUM: PRODUCT, SERVICE)
+- price_client (Decimal) -> Preço de venda
+- internal_cost (Decimal) -> Custo para a empresa
+- stock_quantity (Int), active
+
+### Event (O Coração do Sistema)
+- id (UUID)
+- client_name, client_phone, address, event_date
+- distance_km (Decimal) -> Distância ida/volta
+- guest_adults (Int), guest_kids (Int)
+- transport_type (ENUM: FLEET_VEHICLE, INDIVIDUAL_TRANSPORT, NO_TRANSPORT)
+- vehicle_id (Optional FK) -> Obrigatório se transport_type for FLEET_VEHICLE
+- status (ENUM: PENDING, CONFIRMED, DONE, CANCELED)
+- financial_status (ENUM: UNPAID, PARTIAL, PAID)
+- notes
+
+### EventFinancials (Tabela separada ou campos no Event para performance)
+- total_revenue (Receita bruta)
+- total_cost_items (Custo de produtos/serviços)
+- total_cost_labor (Custo equipe)
+- total_cost_transport (Custo logístico)
+- extra_expenses (Custos extras manuais)
+- net_profit (Lucro Líquido)
+- profit_margin (Margem %)
+
+### Relacionamentos de Evento
+- EventItems (Event <-> CatalogItem): quantity, unit_price_snapshot, unit_cost_snapshot
+- EventTeam (Event <-> Employee): payment_snapshot, transport_cost_snapshot
+
+====================================================================
+4. LÓGICA DE NEGÓCIO (BACKEND)
+====================================================================
+
+### A. Lógica de Transporte (CRÍTICA)
+Ao salvar/atualizar um evento, o backend deve calcular o `total_cost_transport`:
+
+1. Se `transport_type == FLEET_VEHICLE`:
+   - Validar se `vehicle_id` existe.
+   - Custo = `distance_km` * (`vehicle.avg_fuel_price` / `vehicle.km_per_liter` + `vehicle.maintenance_cost_per_km`).
+   - O custo de transporte individual dos funcionários é ignorado (vão no carro da empresa).
+
+2. Se `transport_type == INDIVIDUAL_TRANSPORT`:
+   - Custo = Soma do `individual_transport_cost` de todos os funcionários escalados.
+   - Ignora cálculo de KM e Veículo.
+
+### B. Cálculo Financeiro Automático
+Sempre que um item ou funcionário for adicionado ao evento, recalcular:
+1. `total_revenue`: Soma (Itens Preço Venda * Qtd).
+2. `total_cost_items`: Soma (Itens Custo Interno * Qtd).
+3. `total_cost_labor`: Soma (Cachê base dos funcionários).
+4. `net_profit`: Receita - (Custo Itens + Custo Mão de Obra + Custo Transporte + Extras).
+5. `profit_margin`: (Lucro Líquido / Receita) * 100.
+
+*Regra de Ouro:* O campo "Custo Total" nunca é editável manualmente. É sempre derivado.
+
+====================================================================
+5. FUNCIONALIDADES E UI/UX
+====================================================================
+
+### Dashboard
+- Cards: Faturamento Mês, Lucro Líquido Mês, Margem Média, Eventos Pendentes.
+- Gráfico: Receita vs Custos (Bar chart).
+
+### Calendário
+- Visão anual (12 meses em grid pequeno) ou mensal completa.
+- Cores diferentes por Status do Evento.
+- Clique no dia abre modal com resumo dos eventos.
+
+### Gestão de Eventos (Tela Principal)
+- Ao selecionar "Frota Própria", deve aparecer dropdown de veículos.
+- Ao selecionar funcionários, mostrar feedback visual do custo de mão de obra subindo.
+- Exibir card fixo flutuante ou lateral com o "Resumo Financeiro" (Receita, Custos, Lucro) atualizando em tempo real (via resposta da API).
+
+====================================================================
+ENTREGÁVEIS ESPERADOS
+====================================================================
+1. Estrutura de pastas do projeto (Frontend e Backend).
+2. Arquivo `schema.prisma` completo.
+3. Código do Backend (Controller e Service) focado na lógica de "Criação/Edição de Evento" com os cálculos financeiros detalhados acima.
+4. Código do Frontend (Componente de Formulário de Evento) mostrando como consumir essa API e atualizar o estado.
+
+Comece definindo o Schema do Prisma.
