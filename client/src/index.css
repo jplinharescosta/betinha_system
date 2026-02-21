@@ -135,3 +135,53 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground/50;
 }
+
+/* Fix date input: hide native icon, use custom wrapper */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+}
+
+/* Date input wrapper flex layout */
+.date-input-wrapper {
+  display: flex;
+  align-items: center;
+  border: 1px solid hsl(var(--input));
+  border-radius: calc(var(--radius) - 2px);
+  background: hsl(var(--background));
+  padding-right: 0.75rem;
+  overflow: hidden;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.date-input-wrapper:focus-within {
+  outline: none;
+  ring: 2px;
+  box-shadow: 0 0 0 2px hsl(var(--ring));
+  border-color: hsl(var(--ring));
+}
+.date-input-wrapper input {
+  flex-grow: 1;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  ring: none;
+  background: transparent;
+}
+.date-input-wrapper input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  ring: 0;
+  --tw-ring-shadow: none;
+}
+.date-input-wrapper .date-icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+}
+
+.dark {
+  /* no longer needed since we use custom icon */
+}

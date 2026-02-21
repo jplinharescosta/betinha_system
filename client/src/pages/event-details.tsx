@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Save, ArrowLeft, Plus, Trash2, DollarSign, MapPin, ExternalLink } from "lucide-react";
+import { Loader2, Save, ArrowLeft, Plus, Trash2, DollarSign, MapPin, ExternalLink, CalendarDays } from "lucide-react";
 import { 
   AlertDialog, AlertDialogAction, AlertDialogCancel, 
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter, 
@@ -313,18 +313,21 @@ export default function EventDetails() {
                         <FormItem>
                           <FormLabel>Data e Hora</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="datetime-local" 
-                              value={formatDateForInput(field.value)}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (!val) return;
-                                const d = new Date(val);
-                                if (!isNaN(d.getTime())) {
-                                  field.onChange(d);
-                                }
-                              }}
-                            />
+                            <div className="date-input-wrapper">
+                              <Input 
+                                type="datetime-local" 
+                                value={formatDateForInput(field.value)}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (!val) return;
+                                  const d = new Date(val);
+                                  if (!isNaN(d.getTime())) {
+                                    field.onChange(d);
+                                  }
+                                }}
+                              />
+                              <CalendarDays className="date-icon" onClick={(e) => { const input = (e.currentTarget as HTMLElement).previousElementSibling as HTMLInputElement; input?.showPicker?.(); }} />
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>

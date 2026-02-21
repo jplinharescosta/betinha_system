@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useStats } from "@/hooks/use-resources";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Calendar, ArrowUpRight, Package, Users } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, ArrowUpRight, Package, Users, CalendarDays } from "lucide-react";
 import { 
   Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid 
 } from "recharts";
@@ -31,21 +31,25 @@ export default function Dashboard() {
       <div className="flex flex-wrap items-end gap-4 bg-card p-4 rounded-xl border border-border/50 shadow-sm">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Data Início</Label>
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-40"
-          />
+          <div className="date-input-wrapper w-40">
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <CalendarDays className="date-icon" onClick={(e) => { const input = (e.currentTarget as HTMLElement).previousElementSibling as HTMLInputElement; input?.showPicker?.(); }} />
+          </div>
         </div>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Data Fim</Label>
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="w-40"
-          />
+          <div className="date-input-wrapper w-40">
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+            <CalendarDays className="date-icon" onClick={(e) => { const input = (e.currentTarget as HTMLElement).previousElementSibling as HTMLInputElement; input?.showPicker?.(); }} />
+          </div>
         </div>
         {(startDate || endDate) && (
           <Button variant="ghost" size="sm" onClick={() => { setStartDate(""); setEndDate(""); }}>
