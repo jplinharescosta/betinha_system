@@ -3,12 +3,13 @@ import { useEvents } from "@/hooks/use-resources";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid, ExternalLink } from "lucide-react";
 import { format, startOfYear, endOfYear, eachMonthOfInterval, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addYears, subYears, compareAsc } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { StatusBadge } from "@/components/status-badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { EventResponse } from "@shared/schema";
 
 function getDotColor(count: number) {
@@ -31,6 +32,8 @@ function getStatusLabel(s: string) {
 export default function Calendar() {
   const [currentYear, setCurrentYear] = useState(new Date());
   const [view, setView] = useState<"grid" | "timeline">("grid");
+  const [selectedDay, setSelectedDay] = useState<{ date: Date; events: EventResponse[] } | null>(null);
+  const [, navigate] = useLocation();
   const { data: events } = useEvents();
 
   const months = eachMonthOfInterval({
@@ -135,8 +138,15 @@ export default function Calendar() {
                           key={day.toString()} 
                           className={cn(
                             "h-8 rounded-md flex flex-col items-center justify-center relative transition-colors border border-transparent",
-                            count > 0 ? "bg-primary/10 border-primary/20" : "hover:bg-muted"
+                            count > 0 ? "bg-primary/10 border-primary/20 cursor-pointer" : "hover:bg-muted"
                           )}
+                          onClick={() => {
+                            if (count === 1) {
+                              navigate(`/events/${dayEvents[0].id}`);
+                            } else if (count > 1) {
+                              setSelectedDay({ date: day, events: dayEvents });
+                            }
+                          }}
                         >
                           <span className={cn(
                             "text-xs font-medium",
@@ -146,17 +156,6 @@ export default function Calendar() {
                           </span>
                           {count > 0 && (
                             <div className={cn("w-1.5 h-1.5 rounded-full mt-0.5", getDotColor(count))} />
-                          )}
-                          {count > 0 && (
-                            <div className="absolute inset-0 opacity-0 hover:opacity-100 bg-background/95 flex items-center justify-center p-1 z-20 rounded-md border border-border shadow-lg transition-opacity overflow-hidden">
-                              <div className="flex flex-col gap-1 w-full">
-                                {dayEvents.map((event: EventResponse) => (
-                                  <Link key={event.id} href={`/events/${event.id}`} className="text-[8px] truncate hover:text-primary transition-colors">
-                                    • {event.clientName}
-                                  </Link>
-                                ))}
-                              </div>
-                            </div>
                           )}
                         </div>
                       );
@@ -226,6 +225,44 @@ export default function Calendar() {
           )}
         </div>
       )}
+
+      {/* Dialog for multiple events on same day */}
+      <Dialog open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>
+              Eventos em {selectedDay ? format(selectedDay.date, "dd 'de' MMMM, EEEE", { locale: ptBR }) : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {selectedDay?.events.map((event: EventResponse) => {
+              const st = getStatusLabel(event.status);
+              return (
+                <Link key={event.id} href={`/events/${event.id}`} onClick={() => setSelectedDay(null)}>
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/60 hover:border-primary/30 transition-all cursor-pointer group">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-semibold text-sm">{event.clientName}</span>
+                        <StatusBadge status={st.label} variant={st.variant} />
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {event.eventTime && `${event.eventTime} · `}
+                        {event.eventAddress || "Sem endereço"}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-semibold text-primary">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(event.totalRevenue) || 0)}
+                      </span>
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
