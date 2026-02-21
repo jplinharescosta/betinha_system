@@ -70,6 +70,63 @@ export async function registerRoutes(
     res.json(safeUser);
   });
 
+  // Register new user
+  app.post(api.auth.register.path, requireAuth, async (req, res) => {
+    try {
+      const { name, email, password } = api.auth.register.input.parse(req.body);
+      const existing = await storage.getUserByEmail(email);
+      if (existing) {
+        return res.status(400).json({ message: "Email já cadastrado" });
+      }
+      const created = await storage.createUser({
+        name,
+        email,
+        passwordHash: password,
+      });
+      const { passwordHash, ...safeUser } = created;
+      res.status(201).json(safeUser);
+    } catch (err) {
+      if (err instanceof z.ZodError)
+        return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  // Customers
+  app.get(api.customers.list.path, requireAuth, async (req, res) => {
+    const list = await storage.getCustomers();
+    res.json(list);
+  });
+
+  app.post(api.customers.create.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.customers.create.input.parse(req.body);
+      const created = await storage.createCustomer(input);
+      res.status(201).json(created);
+    } catch (err) {
+      if (err instanceof z.ZodError)
+        return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  app.put(api.customers.update.path, requireAuth, async (req, res) => {
+    try {
+      const input = api.customers.update.input.parse(req.body);
+      const updated = await storage.updateCustomer(param(req, "id"), input);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError)
+        return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Internal Error" });
+    }
+  });
+
+  app.delete(api.customers.delete.path, requireAuth, async (req, res) => {
+    await storage.deleteCustomer(param(req, "id"));
+    res.json({ success: true });
+  });
+
   // Employees
   app.get(api.employees.list.path, requireAuth, async (req, res) => {
     const list = await storage.getEmployees();
@@ -237,6 +294,11 @@ export async function registerRoutes(
     }
   });
 
+  app.delete(api.events.delete.path, requireAuth, async (req, res) => {
+    await storage.deleteEvent(param(req, "id"));
+    res.json({ success: true });
+  });
+
   // Event relations (Items and Team)
   app.post(api.events.addItem.path, requireAuth, async (req, res) => {
     try {
@@ -276,7 +338,27 @@ export async function registerRoutes(
   );
 
   app.get(api.events.stats.path, requireAuth, async (req, res) => {
-    const events = await storage.getEvents();
+    const allEvents = await storage.getEvents();
+
+    // Filter by date range if provided
+    const startDate = req.query.startDate
+      ? new Date(String(req.query.startDate))
+      : null;
+    const endDate = req.query.endDate
+      ? new Date(String(req.query.endDate))
+      : null;
+
+    const events = allEvents.filter((e) => {
+      const eventDate = new Date(e.eventDate);
+      if (startDate && eventDate < startDate) return false;
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (eventDate > endOfDay) return false;
+      }
+      return true;
+    });
+
     const pendingEvents = events.filter((e) => e.status === "PENDING").length;
 
     // Simplistic stats calculation

@@ -1,11 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { 
-  useEvent, useCreateEvent, useUpdateEvent, 
-  useVehicles, useCatalogItems, useEmployees,
+  useEvent, useCreateEvent, useUpdateEvent, useDeleteEvent,
+  useVehicles, useCatalogItems, useEmployees, useCustomers,
   useAddEventItem, useRemoveEventItem,
   useAddEventTeam, useRemoveEventTeam
 } from "@/hooks/use-resources";
@@ -17,11 +17,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Save, ArrowLeft, Plus, Trash2, DollarSign } from "lucide-react";
+import { Loader2, Save, ArrowLeft, Plus, Trash2, DollarSign, MapPin, ExternalLink } from "lucide-react";
+import { 
+  AlertDialog, AlertDialogAction, AlertDialogCancel, 
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter, 
+  AlertDialogHeader, AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 import { insertEventSchema } from "@shared/schema";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = insertEventSchema.extend({
   distanceKm: z.coerce.number().min(0),
@@ -33,16 +39,40 @@ const formSchema = insertEventSchema.extend({
   clientAddress: z.string().optional(),
 });
 
+function formatDateForInput(date: Date): string {
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  } catch {
+    return "";
+  }
+}
+
+function openInMaps(address: string) {
+  const encoded = encodeURIComponent(address);
+  window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, "_blank");
+}
+
 export default function EventDetails() {
   const [, params] = useRoute("/events/:id");
   const [, setLocation] = useLocation();
   const id = params?.id;
   const isNew = id === "new";
+  const { toast } = useToast();
 
   const { data: event, isLoading: isLoadingEvent } = useEvent(id || "");
   const { data: vehicles } = useVehicles();
+  const { data: customersList } = useCustomers();
   const { mutate: create, isPending: isCreating } = useCreateEvent();
   const { mutate: update, isPending: isUpdating } = useUpdateEvent();
+  const { mutate: deleteEvent, isPending: isDeleting } = useDeleteEvent();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -81,6 +111,17 @@ export default function EventDetails() {
 
   const transportType = form.watch("transportType");
 
+  // When customer is selected from dropdown, auto-fill phone/email/address
+  function handleCustomerSelect(customerName: string) {
+    form.setValue("clientName", customerName);
+    const customer = customersList?.find((c: any) => c.name === customerName);
+    if (customer) {
+      if (customer.phone) form.setValue("clientPhone", customer.phone);
+      if (customer.email) form.setValue("clientEmail", customer.email);
+      if (customer.address) form.setValue("clientAddress", customer.address);
+    }
+  }
+
   function onSubmit(values: z.infer<typeof formSchema>) {
     const payload = {
       ...values,
@@ -95,7 +136,17 @@ export default function EventDetails() {
     } else if (id) {
       update({ id, ...payload }, {
         onSuccess: () => {
-          // Toast success could go here
+          toast({ title: "Evento salvo com sucesso!" });
+        }
+      });
+    }
+  }
+
+  function handleDelete() {
+    if (id) {
+      deleteEvent(id, {
+        onSuccess: () => {
+          setLocation("/events");
         }
       });
     }
@@ -114,9 +165,42 @@ export default function EventDetails() {
         <PageHeader 
           title={isNew ? "Novo Evento" : `Evento: ${event?.clientName}`} 
           description={isNew ? "Preencha os dados iniciais" : `Data: ${format(new Date(event?.eventDate || new Date()), "dd/MM/yyyy HH:mm", { locale: ptBR })}`}
-          className="mb-0"
+          className="mb-0 flex-1"
         />
+        {!isNew && (
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            disabled={isDeleting}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Excluir Evento
+          </Button>
+        )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Evento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o evento de <strong>{event?.clientName}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Form */}
@@ -135,7 +219,24 @@ export default function EventDetails() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Nome do Cliente</FormLabel>
-                          <FormControl><Input {...field} /></FormControl>
+                          {customersList && customersList.length > 0 ? (
+                            <Select onValueChange={handleCustomerSelect} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione um cliente" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {customersList.map((c: any) => (
+                                  <SelectItem key={c.id} value={c.name}>
+                                    {c.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <FormControl><Input {...field} /></FormControl>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -171,7 +272,14 @@ export default function EventDetails() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Endereço do Cliente</FormLabel>
-                          <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                          <div className="flex gap-2">
+                            <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                            {field.value && (
+                              <Button type="button" variant="outline" size="icon" onClick={() => openInMaps(field.value || "")} title="Abrir no Google Maps">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -184,7 +292,14 @@ export default function EventDetails() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Local do Evento</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <div className="flex gap-2">
+                          <FormControl><Input {...field} /></FormControl>
+                          {field.value && (
+                            <Button type="button" variant="outline" size="icon" onClick={() => openInMaps(field.value)} title="Abrir no Google Maps">
+                              <MapPin className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -200,9 +315,15 @@ export default function EventDetails() {
                           <FormControl>
                             <Input 
                               type="datetime-local" 
-                              {...field} 
-                              value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value} 
-                              onChange={(e) => field.onChange(new Date(e.target.value))}
+                              value={formatDateForInput(field.value)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (!val) return;
+                                const d = new Date(val);
+                                if (!isNaN(d.getTime())) {
+                                  field.onChange(d);
+                                }
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -216,6 +337,7 @@ export default function EventDetails() {
                         <FormItem>
                           <FormLabel>Distância (Km)</FormLabel>
                           <FormControl><Input type="number" step="0.1" {...field} /></FormControl>
+                          <p className="text-xs text-amber-600 mt-1 font-medium">⚠ Ida e volta</p>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -332,7 +454,7 @@ export default function EventDetails() {
                         <FormItem>
                           <FormLabel>Despesas Extras (R$)</FormLabel>
                           <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                          <FormDescription>Custos adicionais não previstos no catálogo.</FormDescription>
+                          <p className="text-xs text-muted-foreground mt-1">Custos adicionais não previstos no catálogo.</p>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -403,16 +525,13 @@ export default function EventDetails() {
   );
 }
 
-function FormDescription({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-muted-foreground mt-1">{children}</p>;
-}
-
 function FinancialSummaryCard({ event }: { event: any }) {
   if (!event) return null;
 
   const formatMoney = (val: string | number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(val || 0));
 
+  const totalCosts = Number(event.totalCostItems || 0) + Number(event.totalCostLabor || 0) + Number(event.totalCostTransport || 0) + Number(event.extraExpenses || 0);
   const margin = Number(event.profitMargin || 0);
   const marginColor = margin > 30 ? "text-green-500" : margin > 10 ? "text-yellow-500" : "text-red-500";
 
@@ -436,19 +555,24 @@ function FinancialSummaryCard({ event }: { event: any }) {
         <div className="space-y-2">
           <div className="flex justify-between items-center text-sm">
             <span className="text-muted-foreground">Custo Itens</span>
-            <span>{formatMoney(event.totalCostItems)}</span>
+            <span className="text-red-400">{formatMoney(event.totalCostItems)}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-muted-foreground">Custo Mão de Obra</span>
-            <span>{formatMoney(event.totalCostLabor)}</span>
+            <span className="text-red-400">{formatMoney(event.totalCostLabor)}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-muted-foreground">Custo Transporte</span>
-            <span>{formatMoney(event.totalCostTransport)}</span>
+            <span className="text-red-400">{formatMoney(event.totalCostTransport)}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-muted-foreground">Despesas Extras</span>
-            <span>{formatMoney(event.extraExpenses)}</span>
+            <span className="text-red-400">{formatMoney(event.extraExpenses)}</span>
+          </div>
+          <Separator />
+          <div className="flex justify-between items-center text-sm font-medium">
+            <span className="text-muted-foreground">Total de Custos</span>
+            <span className="text-red-500">{formatMoney(totalCosts)}</span>
           </div>
         </div>
 
@@ -462,7 +586,7 @@ function FinancialSummaryCard({ event }: { event: any }) {
         </div>
         <div className="flex justify-between items-center">
           <span className="text-sm text-muted-foreground">Margem</span>
-          <span className={cn("font-bold", marginColor)}>{margin}%</span>
+          <span className={cn("font-bold", marginColor)}>{Number(margin).toFixed(1)}%</span>
         </div>
       </CardContent>
     </Card>
@@ -473,16 +597,28 @@ function EventItemsSection({ eventId, items }: { eventId: string, items: any[] }
   const { data: catalog } = useCatalogItems();
   const { mutate: addItem, isPending: isAdding } = useAddEventItem();
   const { mutate: removeItem, isPending: isRemoving } = useRemoveEventItem();
+  const { toast } = useToast();
   
   const [selectedItem, setSelectedItem] = useState("");
   const [quantity, setQuantity] = useState(1);
 
+  // Filter out items already added to the event (prevent duplicates)
+  const availableItems = catalog?.filter((item: any) => 
+    !items.some((ei: any) => ei.catalogItemId === item.id)
+  );
+
   const handleAdd = () => {
-    if (selectedItem) {
-      addItem({ eventId, catalogItemId: selectedItem, quantity });
-      setSelectedItem("");
-      setQuantity(1);
+    if (!selectedItem) return;
+    
+    const alreadyAdded = items.some((ei: any) => ei.catalogItemId === selectedItem);
+    if (alreadyAdded) {
+      toast({ title: "Item já adicionado", description: "Este item já está no evento. Remova-o primeiro para alterar a quantidade.", variant: "destructive" });
+      return;
     }
+    
+    addItem({ eventId, catalogItemId: selectedItem, quantity });
+    setSelectedItem("");
+    setQuantity(1);
   };
 
   return (
@@ -497,17 +633,20 @@ function EventItemsSection({ eventId, items }: { eventId: string, items: any[] }
               <SelectValue placeholder="Adicionar item..." />
             </SelectTrigger>
             <SelectContent>
-              {catalog?.map((item: any) => (
+              {availableItems?.map((item: any) => (
                 <SelectItem key={item.id} value={item.id}>
                   {item.name} - R$ {item.priceClient}
                 </SelectItem>
               ))}
+              {availableItems?.length === 0 && (
+                <div className="p-2 text-sm text-muted-foreground text-center">Todos os itens já foram adicionados</div>
+              )}
             </SelectContent>
           </Select>
           <Input 
             type="number" 
             value={quantity} 
-            onChange={(e) => setQuantity(Number(e.target.value))} 
+            onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))} 
             className="w-20" 
             min={1}
           />
@@ -543,20 +682,30 @@ function EventItemsSection({ eventId, items }: { eventId: string, items: any[] }
   );
 }
 
-import { useState } from "react";
-
 function EventTeamSection({ eventId, team }: { eventId: string, team: any[] }) {
   const { data: employees } = useEmployees();
   const { mutate: addTeam, isPending: isAdding } = useAddEventTeam();
   const { mutate: removeTeam, isPending: isRemoving } = useRemoveEventTeam();
+  const { toast } = useToast();
   
   const [selectedEmployee, setSelectedEmployee] = useState("");
 
+  // Filter out employees already in the team (prevent duplicates)
+  const availableEmployees = employees?.filter((emp: any) => 
+    !team.some((t: any) => t.employeeId === emp.id)
+  );
+
   const handleAdd = () => {
-    if (selectedEmployee) {
-      addTeam({ eventId, employeeId: selectedEmployee });
-      setSelectedEmployee("");
+    if (!selectedEmployee) return;
+    
+    const alreadyAdded = team.some((t: any) => t.employeeId === selectedEmployee);
+    if (alreadyAdded) {
+      toast({ title: "Funcionário já escalado", description: "Este funcionário já está na equipe do evento.", variant: "destructive" });
+      return;
     }
+    
+    addTeam({ eventId, employeeId: selectedEmployee });
+    setSelectedEmployee("");
   };
 
   return (
@@ -571,11 +720,14 @@ function EventTeamSection({ eventId, team }: { eventId: string, team: any[] }) {
               <SelectValue placeholder="Adicionar funcionário..." />
             </SelectTrigger>
             <SelectContent>
-              {employees?.map((emp: any) => (
+              {availableEmployees?.map((emp: any) => (
                 <SelectItem key={emp.id} value={emp.id}>
                   {emp.name} ({emp.role})
                 </SelectItem>
               ))}
+              {availableEmployees?.length === 0 && (
+                <div className="p-2 text-sm text-muted-foreground text-center">Todos os funcionários já foram escalados</div>
+              )}
             </SelectContent>
           </Select>
           <Button onClick={handleAdd} disabled={!selectedEmployee || isAdding}>
@@ -588,7 +740,7 @@ function EventTeamSection({ eventId, team }: { eventId: string, team: any[] }) {
             <div key={member.id} className="p-3 flex justify-between items-center hover:bg-muted/50">
               <div>
                 <p className="font-medium">{member.employee?.name}</p>
-                <p className="text-xs text-muted-foreground">{member.employee?.role}</p>
+                <p className="text-xs text-muted-foreground">{member.employee?.role} — R$ {member.paymentSnapshot}</p>
               </div>
               <Button 
                 variant="ghost" 

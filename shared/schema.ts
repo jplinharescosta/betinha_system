@@ -22,6 +22,20 @@ export const users = sqliteTable("users", {
   ),
 });
 
+// --- Customers (Clientes) ---
+export const customers = sqliteTable("customers", {
+  id: uuid(),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
+  notes: text("notes"),
+  active: integer("active", { mode: "boolean" }).default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).default(
+    sql`(unixepoch())`,
+  ),
+});
+
 // --- Employees (Equipe) ---
 export const employees = sqliteTable("employees", {
   id: uuid(),
@@ -30,6 +44,7 @@ export const employees = sqliteTable("employees", {
   role: text("role").notNull(),
   basePayment: text("base_payment").notNull(),
   individualTransportCost: text("individual_transport_cost").notNull(),
+  status: text("status").notNull().default("ACTIVE"), // ACTIVE, INACTIVE, TESTING, WARNING
   active: integer("active", { mode: "boolean" }).default(true),
 });
 
@@ -41,6 +56,7 @@ export const vehicles = sqliteTable("vehicles", {
   kmPerLiter: text("km_per_liter").notNull(),
   avgFuelPrice: text("avg_fuel_price").notNull(),
   maintenanceCostPerKm: text("maintenance_cost_per_km").notNull(),
+  status: text("status").notNull().default("ACTIVE"), // ACTIVE, INACTIVE, MAINTENANCE
   active: integer("active", { mode: "boolean" }).default(true),
 });
 
@@ -169,6 +185,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
 });
+export const insertCustomerSchema = createInsertSchema(customers).omit({
+  id: true,
+  createdAt: true,
+  active: true,
+});
 export const insertEmployeeSchema = createInsertSchema(employees).omit({
   id: true,
 });
@@ -213,6 +234,7 @@ export const insertEventTeamSchema = createInsertSchema(eventTeam).omit({
 
 // Response types
 export type UserResponse = typeof users.$inferSelect;
+export type CustomerResponse = typeof customers.$inferSelect;
 export type EmployeeResponse = typeof employees.$inferSelect;
 export type VehicleResponse = typeof vehicles.$inferSelect;
 export type CategoryResponse = typeof categories.$inferSelect;
@@ -230,6 +252,9 @@ export type EventResponse = typeof events.$inferSelect & {
 };
 
 // Request Types
+export type CreateCustomerRequest = z.infer<typeof insertCustomerSchema>;
+export type UpdateCustomerRequest = Partial<CreateCustomerRequest>;
+
 export type CreateEmployeeRequest = z.infer<typeof insertEmployeeSchema>;
 export type UpdateEmployeeRequest = Partial<CreateEmployeeRequest>;
 

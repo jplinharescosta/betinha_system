@@ -18,6 +18,7 @@ import Customers from "@/pages/customers";
 import EventsList from "@/pages/events-list";
 import EventDetails from "@/pages/event-details";
 import NotFound from "@/pages/not-found";
+import CatalogPage from "@/pages/catalog";
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const { data: user, isLoading } = useUser();
@@ -67,7 +68,7 @@ function Router() {
         <ProtectedRoute component={Vehicles} />
       </Route>
       <Route path="/catalog">
-        <ProtectedRoute component={() => <div className="p-8">Módulo Catálogo (Em breve)</div>} />
+        <ProtectedRoute component={CatalogPage} />
       </Route>
 
       <Route path="/customers">

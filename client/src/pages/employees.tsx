@@ -24,6 +24,18 @@ import { insertEmployeeSchema, type EmployeeResponse } from "@shared/schema";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { StatusBadge } from "@/components/status-badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const EMPLOYEE_STATUS_OPTIONS = [
+  { value: "ACTIVE", label: "Ativo", variant: "success" as const },
+  { value: "INACTIVE", label: "Inativo", variant: "error" as const },
+  { value: "TESTING", label: "Em teste", variant: "default" as const },
+  { value: "WARNING", label: "Aviso", variant: "warning" as const },
+];
+
+function getEmployeeStatusDisplay(status: string) {
+  return EMPLOYEE_STATUS_OPTIONS.find(o => o.value === status) || EMPLOYEE_STATUS_OPTIONS[0];
+}
 
 export default function Employees() {
   const { data: employees, isLoading } = useEmployees();
@@ -97,10 +109,10 @@ export default function Employees() {
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(employee.individualTransportCost))}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge 
-                      status={employee.active ? "Ativo" : "Inativo"} 
-                      variant={employee.active ? "success" : "default"} 
-                    />
+                    {(() => {
+                      const st = getEmployeeStatusDisplay((employee as any).status || (employee.active ? "ACTIVE" : "INACTIVE"));
+                      return <StatusBadge status={st.label} variant={st.variant} />;
+                    })()}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -206,14 +218,18 @@ function EmployeeDialog({
       basePayment: employee ? Number(employee.basePayment) : 0,
       individualTransportCost: employee ? Number(employee.individualTransportCost) : 0,
       active: employee?.active ?? true,
+      status: (employee as any)?.status || "ACTIVE",
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    const status = (values as any).status || "ACTIVE";
     const payload = {
       ...values,
       basePayment: String(values.basePayment),
       individualTransportCost: String(values.individualTransportCost),
+      status,
+      active: status !== "INACTIVE",
     };
     if (isEditing && employee) {
       update({ id: employee.id, ...payload }, {
@@ -308,6 +324,24 @@ function EmployeeDialog({
                   </FormItem>
                 )}
               />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Status</Label>
+              <Select
+                value={(form.watch as any)("status") || "ACTIVE"}
+                onValueChange={(val) => form.setValue("status" as any, val)}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMPLOYEE_STATUS_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <DialogFooter className="pt-4">
               <Button type="submit" disabled={isPending}>

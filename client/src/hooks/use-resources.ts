@@ -11,8 +11,73 @@ import {
   type UpdateCatalogItemRequest,
   type CreateEventRequest,
   type UpdateEventRequest,
+  type CreateCustomerRequest,
+  type UpdateCustomerRequest,
 } from "@shared/schema";
 import { authFetch } from "@/lib/auth";
+
+// --- CUSTOMERS ---
+export function useCustomers() {
+  return useQuery({
+    queryKey: [api.customers.list.path],
+    queryFn: async () => {
+      const res = await authFetch(api.customers.list.path);
+      if (!res.ok) throw new Error("Failed to fetch customers");
+      return await res.json();
+    },
+  });
+}
+
+export function useCreateCustomer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: CreateCustomerRequest) => {
+      const res = await authFetch(api.customers.create.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to create customer");
+      return await res.json();
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [api.customers.list.path] }),
+  });
+}
+
+export function useUpdateCustomer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...data
+    }: UpdateCustomerRequest & { id: string }) => {
+      const url = buildUrl(api.customers.update.path, { id });
+      const res = await authFetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update customer");
+      return await res.json();
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [api.customers.list.path] }),
+  });
+}
+
+export function useDeleteCustomer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const url = buildUrl(api.customers.delete.path, { id });
+      const res = await authFetch(url, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete customer");
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [api.customers.list.path] }),
+  });
+}
 
 // --- EMPLOYEES ---
 export function useEmployees() {
@@ -413,11 +478,16 @@ export function useRemoveEventTeam() {
 }
 
 // Stats
-export function useStats() {
+export function useStats(startDate?: string, endDate?: string) {
   return useQuery({
-    queryKey: [api.events.stats.path],
+    queryKey: [api.events.stats.path, startDate, endDate],
     queryFn: async () => {
-      const res = await authFetch(api.events.stats.path);
+      let url = api.events.stats.path;
+      const params = new URLSearchParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      if (params.toString()) url += `?${params.toString()}`;
+      const res = await authFetch(url);
       if (!res.ok) throw new Error("Failed to fetch stats");
       return await res.json();
     },

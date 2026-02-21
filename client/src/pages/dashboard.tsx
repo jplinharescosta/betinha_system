@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useStats } from "@/hooks/use-resources";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,9 +8,14 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = useStats();
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const { data: stats, isLoading } = useStats(startDate || undefined, endDate || undefined);
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -21,6 +27,32 @@ export default function Dashboard() {
         title="Dashboard" 
         description="Visão geral do desempenho financeiro e operacional"
       />
+
+      <div className="flex flex-wrap items-end gap-4 bg-card p-4 rounded-xl border border-border/50 shadow-sm">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Data Início</Label>
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-40"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Data Fim</Label>
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-40"
+          />
+        </div>
+        {(startDate || endDate) && (
+          <Button variant="ghost" size="sm" onClick={() => { setStartDate(""); setEndDate(""); }}>
+            Limpar filtro
+          </Button>
+        )}
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard 

@@ -23,6 +23,18 @@ import { insertVehicleSchema, type VehicleResponse } from "@shared/schema";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { StatusBadge } from "@/components/status-badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+
+const VEHICLE_STATUS_OPTIONS = [
+  { value: "ACTIVE", label: "Ativo", variant: "success" as const },
+  { value: "INACTIVE", label: "Inativo", variant: "error" as const },
+  { value: "MAINTENANCE", label: "Em manutenção", variant: "warning" as const },
+];
+
+function getVehicleStatusDisplay(status: string) {
+  return VEHICLE_STATUS_OPTIONS.find(o => o.value === status) || VEHICLE_STATUS_OPTIONS[0];
+}
 
 export default function Vehicles() {
   const { data: vehicles, isLoading } = useVehicles();
@@ -96,10 +108,10 @@ export default function Vehicles() {
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(vehicle.maintenanceCostPerKm))}
                   </TableCell>
                   <TableCell>
-                    <StatusBadge 
-                      status={vehicle.active ? "Ativo" : "Inativo"} 
-                      variant={vehicle.active ? "success" : "default"} 
-                    />
+                    {(() => {
+                      const st = getVehicleStatusDisplay((vehicle as any).status || (vehicle.active ? "ACTIVE" : "INACTIVE"));
+                      return <StatusBadge status={st.label} variant={st.variant} />;
+                    })()}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -202,15 +214,19 @@ function VehicleDialog({
       avgFuelPrice: vehicle ? Number(vehicle.avgFuelPrice) : 5,
       maintenanceCostPerKm: vehicle ? Number(vehicle.maintenanceCostPerKm) : 0,
       active: vehicle?.active ?? true,
+      status: (vehicle as any)?.status || "ACTIVE",
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    const status = (values as any).status || "ACTIVE";
     const payload = {
       ...values,
       kmPerLiter: String(values.kmPerLiter),
       avgFuelPrice: String(values.avgFuelPrice),
       maintenanceCostPerKm: String(values.maintenanceCostPerKm),
+      status,
+      active: status !== "INACTIVE",
     };
     if (isEditing && vehicle) {
       update({ id: vehicle.id, ...payload }, {
@@ -304,6 +320,24 @@ function VehicleDialog({
                 </FormItem>
               )}
             />
+            <div>
+              <Label className="text-sm font-medium">Status</Label>
+              <Select
+                value={(form.watch as any)("status") || "ACTIVE"}
+                onValueChange={(val) => form.setValue("status" as any, val)}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Selecione o status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {VEHICLE_STATUS_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <DialogFooter className="pt-4">
               <Button type="submit" disabled={isPending} className="bg-primary text-primary-foreground hover:bg-primary/90">
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
